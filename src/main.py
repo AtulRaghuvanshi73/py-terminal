@@ -10,13 +10,17 @@ try:
     import readline
 except ImportError:
     pass  # readline not available on this platform
-from prompt_toolkit import prompt
+from prompt_toolkit import prompt, HTML
 from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.shortcuts import CompleteStyle
-import colorama
-from colorama import Fore, Back, Style
+from prompt_toolkit.styles import Style as PromptStyle
+from rich.console import Console
+from rich.theme import Theme
+from rich.panel import Panel
+from rich.table import Table
+from rich import print as rprint
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
@@ -89,8 +93,13 @@ class PyTerminalInterface:
     """
     
     def __init__(self):
-        # Initialize colorama for cross-platform color support
-        colorama.init(autoreset=True)
+        # Initialize Rich console with custom theme
+        self.console = Console(theme=Theme({
+            "info": "cyan",
+            "warning": "yellow",
+            "error": "bold red",
+            "success": "bold green"
+        }))
         
         self.terminal_engine = TerminalEngine()
         self.history = InMemoryHistory()
@@ -101,6 +110,13 @@ class PyTerminalInterface:
         signal.signal(signal.SIGINT, self._signal_handler)
         if hasattr(signal, 'SIGTSTP'):
             signal.signal(signal.SIGTSTP, self._signal_handler)
+            
+        # Setup prompt style
+        self.prompt_style = PromptStyle.from_dict({
+            'prompt': 'ansicyan bold',
+            'path': 'ansiblue',
+            'pyterm': 'ansigreen bold'
+        })
     
     def _signal_handler(self, signum, frame):
         """Handle Ctrl+C and Ctrl+Z signals."""
@@ -112,36 +128,62 @@ class PyTerminalInterface:
     
     def _print_welcome(self):
         """Print welcome message."""
-        print(f"{Fore.CYAN}{Style.BRIGHT}")
-        print("╔══════════════════════════════════════════════════════════════════════════════╗")
-        print("║                              PyTerminal v1.0                                ║")
-        print("║                         Python-based Terminal Emulator                      ║")
-        print("╠══════════════════════════════════════════════════════════════════════════════╣")
-        print("║  Features:                                                                   ║")
-        print("║    • File operations (ls, cd, mkdir, rm, cp, mv, etc.)                     ║")
-        print("║    • System monitoring (ps, top, free, df, etc.)                           ║")
-        print("║    • Command history and auto-completion                                     ║")
-        print("║    • Environment management                                                  ║")
-        print("║                                                                              ║")
-        print("║  Type 'help' for available commands or 'exit' to quit.                     ║")
-        print("╚══════════════════════════════════════════════════════════════════════════════╝")
-        print(f"{Style.RESET_ALL}")
+        from rich.console import Group
+        from rich.align import Align
+        
+        # Create header
+        title = Align.center("[bold cyan]PyTerminal v1.0[/]")
+        subtitle = Align.center("[cyan]Python-based Terminal Emulator[/]")
+        
+        # Create features table
+        table = Table(show_header=False, box=None, padding=(0, 2), show_edge=False)
+        table.add_column("Feature", style="cyan")
+        table.add_row("• File operations (ls, cd, mkdir, rm, cp, mv, etc.)")
+        table.add_row("• System monitoring (ps, top, free, df, etc.)")
+        table.add_row("• Command history and auto-completion")
+        table.add_row("• Environment management")
+        
+        # Create features section with heading
+        features_heading = Align.left("\n[cyan]Features:[/]")
+        
+        # Create help text
+        help_text = Align.center("\n[dim]Type 'help' for available commands or 'exit' to quit.[/]")
+        
+        # Group all components
+        content = Group(
+            title,
+            subtitle,
+            features_heading,
+            table,
+            help_text
+        )
+        
+        # Create and print panel
+        welcome_panel = Panel(
+            content,
+            border_style="cyan",
+            padding=(1, 2)
+        )
+        
+        self.console.print(welcome_panel)
         print()
     
     def _format_prompt(self):
         """Format the command prompt with colors."""
         prompt_str = self.terminal_engine.get_prompt()
-        # Add colors to the prompt
-        colored_prompt = f"{Fore.GREEN}{Style.BRIGHT}PyTerminal {Fore.BLUE}{prompt_str}{Style.RESET_ALL}"
-        return colored_prompt
+        # Create HTML formatted prompt for prompt_toolkit
+        return HTML(
+            '<pyterm>PyTerminal</pyterm> '
+            '<path>{}</path>'.format(prompt_str)
+        )
     
     def _print_output(self, stdout: str, stderr: str, exit_code: int):
         """Print command output with appropriate colors."""
         if stdout:
-            print(stdout)
+            self.console.print(stdout)
         
         if stderr:
-            print(f"{Fore.RED}{stderr}{Style.RESET_ALL}")
+            self.console.print(stderr, style="error")
     
     def run_interactive(self):
         """Run the interactive terminal."""
@@ -171,11 +213,11 @@ class PyTerminalInterface:
                     continue
                 except EOFError:
                     # Ctrl+D pressed
-                    print("\nExiting...")
+                    self.console.print("\nExiting...", style="info")
                     break
                     
         except Exception as e:
-            print(f"{Fore.RED}Fatal error: {str(e)}{Style.RESET_ALL}")
+            self.console.print(f"Fatal error: {str(e)}", style="error")
             return 1
         
         return 0
@@ -187,7 +229,7 @@ class PyTerminalInterface:
             self._print_output(stdout, stderr, exit_code)
             return exit_code
         except Exception as e:
-            print(f"{Fore.RED}Error: {str(e)}{Style.RESET_ALL}")
+            self.console.print(f"Error: {str(e)}", style="error")
             return 1
 
 

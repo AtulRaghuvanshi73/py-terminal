@@ -245,6 +245,7 @@ Built-in Commands:
     "copy file1.txt to backup.txt"
     
 Type 'ai help' for AI capabilities or 'command --help' for specific command help.
+
         """
         return 0, help_text.strip(), ""
     
