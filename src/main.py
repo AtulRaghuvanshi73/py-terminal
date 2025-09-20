@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 
+# Initialize logging before any other imports
 import sys
 import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+from src.log_config import initialize_logging
+initialize_logging()
+
 import signal
 from pathlib import Path
 
@@ -115,7 +120,8 @@ class PyTerminalInterface:
         self.prompt_style = PromptStyle.from_dict({
             'prompt': 'ansicyan bold',
             'path': 'ansiblue',
-            'pyterm': 'ansigreen bold'
+            'pyterm': 'ansigreen bold',
+            'chat_mode': '#40E0D0 bold'  # Turquoise color for chat mode
         })
     
     def _signal_handler(self, signum, frame):
@@ -142,7 +148,7 @@ class PyTerminalInterface:
         table.add_row("• System monitoring (ps, top, free, df, etc.)")
         table.add_row("• Command history and auto-completion")
         table.add_row("• Environment management")
-        table.add_row("• AI Assistant (type 'chat' to toggle AI mode)")
+        table.add_row("• AI Assistant (type 'chat' to enable chat mode and 'exit chat' to disable)")
         table.add_row("  - Natural language commands")
         table.add_row("  - Interactive help and guidance")
         table.add_row("  - Execute commands in chat with '!' prefix")
@@ -178,7 +184,11 @@ Use 'chat' to toggle AI assistant mode for interactive help and natural language
     def _format_prompt(self):
         """Format the command prompt with colors."""
         prompt_str = self.terminal_engine.get_prompt()
-        # Create HTML formatted prompt for prompt_toolkit
+        # Create HTML formatted prompt for prompt_toolkit with chat mode indicator
+        if self.terminal_engine.ai_interpreter.is_chat_mode:
+            return HTML(
+                '<pyterm>PyTerminal</pyterm> <chat_mode>(chat mode)</chat_mode> <pyterm>==></pyterm> '
+            )
         return HTML(
             '<pyterm>PyTerminal ==></pyterm> '
         )
@@ -186,10 +196,14 @@ Use 'chat' to toggle AI assistant mode for interactive help and natural language
     def _print_output(self, stdout: str, stderr: str, exit_code: int):
         """Print command output with appropriate colors."""
         if stdout:
-            self.console.print(stdout)
+            # Clean up any ** formatting in the output
+            cleaned_stdout = stdout.replace('**', '')
+            self.console.print(cleaned_stdout)
         
         if stderr:
-            self.console.print(stderr, style="error")
+            # Clean up any ** formatting in the error output
+            cleaned_stderr = stderr.replace('**', '')
+            self.console.print(cleaned_stderr, style="error")
     
     def run_interactive(self):
         """Run the interactive terminal."""

@@ -299,13 +299,13 @@ Type 'ai help' for AI capabilities or 'command --help' for specific command help
     def ai_command(self, args: List[str]) -> Tuple[int, str, str]:
         """AI command interface for natural language queries."""
         if not args:
-            help_text = self.ai_interpreter.explain_capabilities()
+            help_text = self.ai_interpreter.explain_capabilities().replace('**', '')
             return 0, help_text, ""
         
         query = " ".join(args)
         
         if query.lower() in ['help', '--help', '-h']:
-            help_text = self.ai_interpreter.explain_capabilities()
+            help_text = self.ai_interpreter.explain_capabilities().replace('**', '')
             return 0, help_text, ""
         
         # Interpret the natural language query

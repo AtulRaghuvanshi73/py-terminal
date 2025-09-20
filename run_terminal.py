@@ -7,8 +7,10 @@ Simple script to run the Python-based terminal.
 import sys
 import os
 
-# Add src to Python path
+# Add src to Python path and initialize logging before any other imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+from src.log_config import initialize_logging
+initialize_logging()
 
 try:
     from main import main

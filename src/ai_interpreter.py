@@ -2,6 +2,11 @@ import re
 import json
 import os
 from typing import List, Tuple, Optional, Dict, Any
+
+# Initialize logging before importing gRPC-based libraries
+from log_config import initialize_logging
+initialize_logging()
+
 import google.generativeai as genai
 from dotenv import load_dotenv
 
@@ -540,7 +545,7 @@ class AICommandInterpreter:
         """
         Return a description of AI interpreter capabilities.
         """
-        return """
+        capabilities = """
 AI Command Interpreter Capabilities:
 
 File Operations:
