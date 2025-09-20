@@ -21,7 +21,7 @@ from colorama import Fore, Back, Style
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
 
-from .terminal_engine import TerminalEngine
+from terminal_engine import TerminalEngine
 
 
 class PyTerminalCompleter(Completer):
