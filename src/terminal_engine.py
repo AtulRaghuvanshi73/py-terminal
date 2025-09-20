@@ -78,7 +78,13 @@ class TerminalEngine:
             'clear': self.clear,
             'history': self.history,
             'ai': self.ai_command,
+            'chat': self.toggle_chat_mode,  # Toggle AI chat mode
         }
+    
+    def toggle_chat_mode(self, args: List[str]) -> Tuple[int, str, str]:
+        """Toggle between AI chat mode and command interpretation mode."""
+        success, message = self.ai_interpreter.toggle_chat_mode()
+        return 0 if success else 1, message, ""
     
     def execute_command(self, command_line: str) -> Tuple[int, str, str]:
         """
@@ -90,6 +96,13 @@ class TerminalEngine:
         Returns:
             Tuple of (exit_code, stdout, stderr)
         """
+        # Check if we're in chat mode
+        if self.ai_interpreter.is_chat_mode and command_line != "chat":
+            success, response, command = self.ai_interpreter.chat(command_line)
+            if command:
+                # Execute the command if one was returned
+                return self.execute_command(command)
+            return (0 if success else 1), response, ""
         if not command_line.strip():
             return 0, "", ""
         

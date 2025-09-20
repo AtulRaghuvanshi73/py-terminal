@@ -142,12 +142,19 @@ class PyTerminalInterface:
         table.add_row("• System monitoring (ps, top, free, df, etc.)")
         table.add_row("• Command history and auto-completion")
         table.add_row("• Environment management")
+        table.add_row("• AI Assistant (type 'chat' to toggle AI mode)")
+        table.add_row("  - Natural language commands")
+        table.add_row("  - Interactive help and guidance")
+        table.add_row("  - Execute commands in chat with '!' prefix")
         
         # Create features section with heading
         features_heading = Align.left("\n[cyan]Features:[/]")
         
         # Create help text
-        help_text = Align.center("\n[dim]Type 'help' for available commands or 'exit' to quit.[/]")
+        help_text = Align.center("""
+[dim]Type 'help' for available commands or 'exit' to quit.
+Use 'chat' to toggle AI assistant mode for interactive help and natural language support.[/]
+""")
         
         # Group all components
         content = Group(
@@ -173,8 +180,7 @@ class PyTerminalInterface:
         prompt_str = self.terminal_engine.get_prompt()
         # Create HTML formatted prompt for prompt_toolkit
         return HTML(
-            '<pyterm>PyTerminal</pyterm> '
-            '<path>{}</path>'.format(prompt_str)
+            '<pyterm>PyTerminal ==></pyterm> '
         )
     
     def _print_output(self, stdout: str, stderr: str, exit_code: int):

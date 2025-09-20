@@ -1,4 +1,13 @@
-# PyTerminal - Python-based Terminal Emulator
+# PyTerminal - Python-based### 🤖 AI-Powered Commands with Gemini
+
+Our terminal understands natural language using Google's Gemini AI! To enable Gemini:
+
+1. Get your Gemini API key from Google AI Studio
+2. Set the environment variable: `export GEMINI_API_KEY=your_key_here`
+
+If Gemini is not configured, the terminal will fall back to pattern matching.
+
+Try these examples:rminal Emulator
 
 A fully functioning command terminal built in Python that mimics the behavior of a real system terminal with modern features including AI-powered natural language command interpretation.
 

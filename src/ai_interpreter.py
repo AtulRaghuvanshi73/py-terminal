@@ -1,21 +1,68 @@
 import re
 import json
+import os
 from typing import List, Tuple, Optional, Dict, Any
+import google.generativeai as genai
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 class AICommandInterpreter:
     """
-    AI-driven command interpreter that converts natural language queries
-    into terminal commands.
+    AI-powered terminal assistant using Google's Gemini AI.
     
-    Note: This is a simplified implementation using pattern matching.
-    In a production environment, you would integrate with a proper NLP
-    service like OpenAI GPT, Google's Language API, or train a custom model.
+    Features:
+    - Command interpretation: Convert natural language to shell commands
+    - Interactive chat: Have conversations and get assistance
+    - Context-aware: Maintains chat history for better responses
     """
     
     def __init__(self):
-        # Define patterns for natural language to command mapping
+        # Define patterns for natural language to command mapping (fallback)
         self.patterns = self._initialize_patterns()
+        
+        # Initialize Gemini if API key is available
+        self.use_gemini = False
+        self.model = None
+        self.chat_model = None
+        self.chat_history = []
+        self.is_chat_mode = False
+        self._initialize_gemini()
+        
+    def _initialize_gemini(self):
+        """Initialize Gemini AI models if API key is available."""
+        api_key = os.getenv('GEMINI_API_KEY')
+        if api_key:
+            try:
+                genai.configure(api_key=api_key)
+                # Initialize both command and chat models
+                self.model = genai.GenerativeModel('gemini-2.0-flash')
+                self.chat_model = self.model.start_chat(history=[])
+                self.use_gemini = True
+                
+                # Initialize chat history with system context
+                system_context = {
+                    "role": "system",
+                    "content": """You are an AI assistant in a terminal environment. You can:
+                    1. Help users understand and use terminal commands
+                    2. Explain concepts and provide guidance
+                    3. Help with coding and scripting tasks
+                    4. Execute commands when asked (by prefixing with '!')
+                    
+                    Rules:
+                    - If user wants to run a command, they must prefix with '!'
+                    - Never execute destructive commands without confirmation
+                    - Keep explanations concise but informative
+                    - Maintain conversation context
+                    """
+                }
+                self.chat_history = [system_context]
+                
+            except Exception as e:
+                print(f"Warning: Failed to initialize Gemini: {e}")
+                self.use_gemini = False
         
     def _initialize_patterns(self) -> List[Dict[str, Any]]:
         """Initialize natural language patterns and their corresponding commands."""
@@ -200,6 +247,7 @@ class AICommandInterpreter:
     def interpret(self, natural_language_query: str) -> Tuple[bool, str, str]:
         """
         Interpret a natural language query and convert it to a terminal command.
+        Uses Gemini if available, falls back to pattern matching.
         
         Args:
             natural_language_query: The natural language input from user
@@ -207,11 +255,56 @@ class AICommandInterpreter:
         Returns:
             Tuple of (success, command, explanation)
         """
-        query = natural_language_query.strip().lower()
+        query = natural_language_query.strip()
         
         if not query:
             return False, "", "Empty query"
+            
+        # Try using Gemini if available
+        if self.use_gemini and self.model:
+            try:
+                system_prompt = """You are a command interpreter for a terminal. Convert natural language queries into Unix/Linux shell commands.
+                Only respond with the exact command to run, do not include any explanations or markdown formatting.
+                If you cannot interpret the query as a command, respond with 'CANNOT_INTERPRET'.
+                For safety, never generate commands that could be harmful (rm -rf /, etc).
+                Examples:
+                - "show me all files" -> "ls -la"
+                - "create a file named test.txt" -> "touch test.txt"
+                - "what is the date" -> "date"
+                - "how much memory is free" -> "free -h"
+                """
+                
+                # Combine system prompt with user query
+                prompt = f"{system_prompt}\n\nQuery: {query}\nCommand:"
+                
+                # Get response from Gemini
+                response = self.model.generate_content(prompt)
+                command = response.text.strip()
+                
+                # Handle failed interpretation
+                if command == "CANNOT_INTERPRET" or not command:
+                    # Fall back to pattern matching
+                    return self._pattern_match_interpret(query)
+                    
+                explanation = (
+                    f"Interpreted '{natural_language_query}' as: {command}\n"
+                    f"Action: Using Gemini AI interpretation"
+                )
+                
+                return True, command, explanation
+                
+            except Exception as e:
+                # If Gemini fails, fall back to pattern matching
+                print(f"Gemini interpretation failed: {e}")
+                return self._pattern_match_interpret(query)
+                
+        # If Gemini is not available, use pattern matching
+        return self._pattern_match_interpret(query)
         
+    def _pattern_match_interpret(self, query: str) -> Tuple[bool, str, str]:
+        """
+        Interpret using pattern matching (fallback method).
+        """
         # Try to match against known patterns
         for pattern_group in self.patterns:
             for pattern in pattern_group['patterns']:
@@ -225,7 +318,7 @@ class AICommandInterpreter:
                         command = pattern_group['command_template'].format(*groups)
                         
                         explanation = (
-                            f"Interpreted '{natural_language_query}' as: {command}\n"
+                            f"Interpreted '{query}' as: {command}\n"
                             f"Action: {pattern_group['description']}"
                         )
                         
@@ -235,12 +328,12 @@ class AICommandInterpreter:
                         continue
         
         # If no pattern matches, try some basic keyword detection
-        fallback_command, fallback_explanation = self._fallback_interpretation(query)
+        fallback_command, fallback_explanation = self._fallback_interpretation(query.lower())
         if fallback_command:
             return True, fallback_command, fallback_explanation
         
         # No interpretation found
-        return False, "", f"Could not interpret: '{natural_language_query}'"
+        return False, "", f"Could not interpret: '{query}'"
     
     def _fallback_interpretation(self, query: str) -> Tuple[str, str]:
         """
@@ -262,6 +355,69 @@ class AICommandInterpreter:
                 return command, f"Interpreted as: {command} - {description}"
         
         return "", ""
+    
+    def chat(self, user_input: str) -> Tuple[bool, str, Optional[str]]:
+        """
+        Handle chat mode interactions with Gemini.
+        
+        Args:
+            user_input: The user's message
+            
+        Returns:
+            Tuple of (success, response, command_to_execute)
+            If the user wants to execute a command, command_to_execute will be set
+        """
+        if not self.use_gemini or not self.chat_model:
+            return False, "Chat mode requires Gemini to be configured.", None
+            
+        try:
+            # Check if this is a command execution request
+            if user_input.startswith('!'):
+                command = user_input[1:].strip()
+                success, cmd, explanation = self.interpret(command)
+                if success:
+                    return True, f"Executing command: {cmd}\n{explanation}", cmd
+                else:
+                    return False, f"Could not interpret command: {command}", None
+            
+            # Add user message to history
+            self.chat_history.append({
+                "role": "user",
+                "content": user_input
+            })
+            
+            # Get response from Gemini
+            response = self.chat_model.send_message(user_input)
+            assistant_message = response.text
+            
+            # Add assistant response to history
+            self.chat_history.append({
+                "role": "assistant",
+                "content": assistant_message
+            })
+            
+            # Keep history manageable (last 10 messages)
+            if len(self.chat_history) > 12:  # 10 messages + system context + current exchange
+                self.chat_history = self.chat_history[:1] + self.chat_history[-10:]
+            
+            return True, assistant_message, None
+            
+        except Exception as e:
+            return False, f"Chat error: {str(e)}", None
+    
+    def toggle_chat_mode(self) -> Tuple[bool, str]:
+        """
+        Toggle between chat and command interpretation modes.
+        
+        Returns:
+            Tuple of (success, message)
+        """
+        if not self.use_gemini:
+            return False, "Chat mode requires Gemini to be configured."
+            
+        self.is_chat_mode = not self.is_chat_mode
+        mode = "chat" if self.is_chat_mode else "command interpretation"
+        return True, f"Switched to {mode} mode."
     
     def get_suggestions(self, partial_query: str) -> List[str]:
         """
