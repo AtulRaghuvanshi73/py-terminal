@@ -17,6 +17,8 @@ class AICommandInterpreter:
     - Command interpretation: Convert natural language to shell commands
     - Interactive chat: Have conversations and get assistance
     - Context-aware: Maintains chat history for better responses
+    - File operations: Create, read, write files directly
+    - Command execution: Execute system commands
     """
     
     def __init__(self):
@@ -31,6 +33,44 @@ class AICommandInterpreter:
         self.is_chat_mode = False
         self._initialize_gemini()
         
+    def _create_file_with_content(self, filename: str, content: str) -> str:
+        """Create a new file with the specified content."""
+        try:
+            with open(filename, 'w') as f:
+                f.write(content)
+            return f"Successfully created file '{filename}' with content"
+        except Exception as e:
+            return f"Error creating file: {str(e)}"
+
+    def _create_empty_file(self, filename: str) -> str:
+        """Create an empty file."""
+        try:
+            with open(filename, 'w') as f:
+                pass
+            return f"Successfully created empty file '{filename}'"
+        except Exception as e:
+            return f"Error creating file: {str(e)}"
+
+    def _create_directory(self, dirname: str) -> str:
+        """Create a directory."""
+        try:
+            os.makedirs(dirname, exist_ok=True)
+            return f"Successfully created directory '{dirname}'"
+        except Exception as e:
+            return f"Error creating directory: {str(e)}"
+
+    def _execute_command(self, command: str) -> str:
+        """Execute a system command."""
+        import subprocess
+        try:
+            result = subprocess.run(command, shell=True, capture_output=True, text=True)
+            if result.returncode == 0:
+                return result.stdout
+            else:
+                return f"Command failed with error: {result.stderr}"
+        except Exception as e:
+            return f"Error executing command: {str(e)}"
+
     def _initialize_gemini(self):
         """Initialize Gemini AI models if API key is available."""
         api_key = os.getenv('GEMINI_API_KEY')
@@ -67,14 +107,24 @@ class AICommandInterpreter:
     def _initialize_patterns(self) -> List[Dict[str, Any]]:
         """Initialize natural language patterns and their corresponding commands."""
         return [
-            # File creation patterns
+            # File creation patterns with content
+            {
+                'patterns': [
+                    r'create (?:a )?(?:new )?file (?:called |named )?["\']?([^"\']+)["\']? with (?:the )?(?:text |content )?["\']([^"\']+)["\']',
+                    r'make (?:a )?(?:new )?file ["\']?([^"\']+)["\']? containing ["\']([^"\']+)["\']',
+                ],
+                'handler': self._create_file_with_content,
+                'description': 'Create a new file with content'
+            },
+            
+            # Simple file creation patterns
             {
                 'patterns': [
                     r'create (?:a )?(?:new )?file (?:called |named )?["\']?([^"\']+)["\']?',
                     r'make (?:a )?(?:new )?file ["\']?([^"\']+)["\']?',
                     r'touch (?:a )?(?:file )?["\']?([^"\']+)["\']?',
                 ],
-                'command_template': 'touch {0}',
+                'handler': self._create_empty_file,
                 'description': 'Create a new file'
             },
             
@@ -85,8 +135,17 @@ class AICommandInterpreter:
                     r'make (?:a )?(?:new )?(?:directory|folder|dir) ["\']?([^"\']+)["\']?',
                     r'mkdir ["\']?([^"\']+)["\']?',
                 ],
-                'command_template': 'mkdir {0}',
+                'handler': self._create_directory,
                 'description': 'Create a new directory'
+            },
+            # System command pattern
+            {
+                'patterns': [
+                    r'(?:run|execute)(?:\s+the)?\s+command\s+["\']?([^"\']+)["\']?',
+                    r'!\s*([^"\']+)',
+                ],
+                'handler': self._execute_command,
+                'description': 'Execute a system command'
             },
             
             # File listing patterns
@@ -126,12 +185,13 @@ class AICommandInterpreter:
             # File moving patterns
             {
                 'patterns': [
-                    r'move (?:the )?file ["\']?([^"\']+)["\']? to ["\']?([^"\']+)["\']?',
+                    r'move (?:the )?file[s]? ["\']?([^"\']+)["\']? to (?:the )?(?:directory |folder )?["\']?([^"\']+)["\']?',
+                    r'move (?:all )?files? (?:from )?["\']?([^"\']+)["\']? to ["\']?([^"\']+)["\']?',
                     r'rename ["\']?([^"\']+)["\']? (?:as |to )["\']?([^"\']+)["\']?',
                     r'mv ["\']?([^"\']+)["\']? ["\']?([^"\']+)["\']?',
                 ],
-                'command_template': 'mv {0} {1}',
-                'description': 'Move/rename file'
+                'command_template': 'mv -f {0} {1} 2>/dev/null || mkdir -p {1} && mv {0} {1}',
+                'description': 'Move/rename file with directory creation'
             },
             
             # File deletion patterns
@@ -152,8 +212,28 @@ class AICommandInterpreter:
                     r'remove (?:the )?(?:directory|folder) ["\']?([^"\']+)["\']?',
                     r'rmdir ["\']?([^"\']+)["\']?',
                 ],
-                'command_template': 'rm -r {0}',
-                'description': 'Delete directory'
+                'command_template': 'rm -rf {0}',
+                'description': 'Delete directory recursively'
+            },
+            
+            # Complex move operations
+            {
+                'patterns': [
+                    r'move (?:the )?(?:files|content) (?:from )?["\']?([^"\']+)["\']? to ["\']?([^"\']+)["\']? and create (?:the )?directory if needed',
+                    r'transfer everything from ["\']?([^"\']+)["\']? to ["\']?([^"\']+)["\']?',
+                ],
+                'command_template': 'mkdir -p {1} && mv {0}/* {1}/',
+                'description': 'Move files with directory creation'
+            },
+            
+            # File/directory checking patterns
+            {
+                'patterns': [
+                    r'check if (?:file|directory) ["\']?([^"\']+)["\']? exists',
+                    r'does ["\']?([^"\']+)["\']? exist',
+                ],
+                'command_template': 'test -e {0} && echo "exists" || echo "not found"',
+                'description': 'Check if file/directory exists'
             },
             
             # File content viewing patterns
@@ -369,8 +449,12 @@ class AICommandInterpreter:
         """
         if not self.use_gemini or not self.chat_model:
             return False, "Chat mode requires Gemini to be configured.", None
-            
+
         try:
+            # Handle exit command in chat mode
+            if user_input.lower() == 'exit':
+                return True, "You are in chat mode, run **exit chat** to exit the terminal", None
+            
             # Check if this is a command execution request
             if user_input.startswith('!'):
                 command = user_input[1:].strip()

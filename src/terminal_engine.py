@@ -97,12 +97,16 @@ class TerminalEngine:
             Tuple of (exit_code, stdout, stderr)
         """
         # Check if we're in chat mode
-        if self.ai_interpreter.is_chat_mode and command_line != "chat":
-            success, response, command = self.ai_interpreter.chat(command_line)
-            if command:
-                # Execute the command if one was returned
-                return self.execute_command(command)
-            return (0 if success else 1), response, ""
+        if self.ai_interpreter.is_chat_mode:
+            if command_line == "exit chat":
+                success, message = self.ai_interpreter.toggle_chat_mode()
+                return 0 if success else 1, message, ""
+            elif command_line != "chat":
+                success, response, command = self.ai_interpreter.chat(command_line)
+                if command:
+                    # Execute the command if one was returned
+                    return self.execute_command(command)
+                return (0 if success else 1), response, ""
         if not command_line.strip():
             return 0, "", ""
         
