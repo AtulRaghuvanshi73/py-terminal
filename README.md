@@ -1,87 +1,70 @@
-# PyTerminal - Python-based### 🤖 AI-Powered Commands with Gemini
+# PyTerminal
 
-Our terminal understands natural language using Google's Gemini AI! To enable Gemini:
+A Python terminal emulator that behaves like a standard system shell, with support for file operations, system monitoring, and optional natural-language command interpretation.
 
-1. Get your Gemini API key from Google AI Studio
-2. Set the environment variable: `export GEMINI_API_KEY=your_key_here`
+## Overview
 
-If Gemini is not configured, the terminal will fall back to pattern matching.
+PyTerminal is a command-line terminal written entirely in Python. It provides a familiar set of shell commands for file and directory management, process and resource monitoring, environment variables, and command aliases. It runs on Windows, Linux, and macOS, and can execute external system commands in addition to its built-in set.
 
-Try these examples:rminal Emulator
+The terminal also accepts plain-English instructions. When a Google Gemini API key is configured, requests are interpreted by the model; otherwise the terminal falls back to built-in pattern matching.
 
-A fully functioning command terminal built in Python that mimics the behavior of a real system terminal with modern features including AI-powered natural language command interpretation.
+## Features
 
-![Python Terminal Demo](https://img.shields.io/badge/Python-3.7+-blue.svg)
-![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-green.svg)
-![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+- File operations: `ls`, `cd`, `pwd`, `mkdir`, `rm`, `cp`, `mv`, `touch`, `cat`, `head`, `tail`, `find`, `grep`
+- System monitoring for CPU, memory, disk, and processes (`free`, `df`, `ps`, `top`, `lscpu`)
+- Natural-language command interpretation via Gemini, with a pattern-matching fallback
+- Command history and recall
+- Tab completion for command names and file paths
+- Colorized output
+- Environment-variable management and user-defined aliases
+- Execution of external system commands
+- Cross-platform support for Windows, Linux, and macOS
 
-## ✨ Features
-
-### 🔧 **Mandatory Requirements (Completed)**
-- ✅ **Python Backend**: Fully implemented in Python with modular architecture
-- ✅ **File Operations**: Complete support for `ls`, `cd`, `pwd`, `mkdir`, `rm`, `cp`, `mv`, `touch`, `cat`, `head`, `tail`, `find`, `grep`
-- ✅ **Error Handling**: Robust error handling for invalid commands and operations
-- ✅ **Clean Interface**: Both CLI and programmatic interfaces available
-- ✅ **System Integration**: CPU, memory, disk, and process monitoring tools
-
-### 🚀 **Enhanced Features (Completed)**
-- ✅ **AI Natural Language Processing**: Type commands in plain English!
-- ✅ **Command History**: Full command history tracking and navigation
-- ✅ **Auto-completion**: Smart tab completion for commands and file paths
-- ✅ **Colorized Output**: Beautiful colored terminal interface
-- ✅ **Cross-platform**: Works on Windows, Linux, and macOS
-- ✅ **External Command Support**: Run any system command seamlessly
-- ✅ **Environment Management**: Full environment variable support
-- ✅ **Command Aliases**: Create and manage command shortcuts
-
-## 🤖 AI-Powered Commands
-
-Our terminal understands natural language! Try these examples:
+## Installation
 
 ```bash
-# Instead of: touch example.txt
-"create a new file called example.txt"
-
-# Instead of: mkdir documents && mv file.txt documents/
-"create a folder called documents and move file.txt into it"
-
-# Instead of: ls -la
-"show me all files"
-
-# Instead of: pwd
-"where am I"
-
-# Instead of: free -h
-"show system memory usage"
+git clone <repository-url>
+cd python-terminal
+pip install -r requirements.txt
+python run_terminal.py
 ```
 
-## 📦 Installation
+Individual commands can also be passed directly to the launcher:
 
-1. **Clone the repository**:
+```bash
+python run_terminal.py "ls -la"
+python run_terminal.py "create a file called test.txt"
+```
+
+## Natural-language commands
+
+In addition to standard syntax, PyTerminal accepts instructions written in plain English and maps them to the corresponding command:
+
+| Instruction | Equivalent command |
+| --- | --- |
+| "create a new file called example.txt" | `touch example.txt` |
+| "show me all files" | `ls -la` |
+| "where am I" | `pwd` |
+| "show system memory usage" | `free -h` |
+| "create a folder called documents and move file.txt into it" | `mkdir documents && mv file.txt documents/` |
+
+### Enabling Gemini
+
+Natural-language interpretation uses Google's Gemini model when an API key is available:
+
+1. Obtain an API key from Google AI Studio.
+2. Set it as an environment variable:
+
    ```bash
-   git clone <repository-url>
-   cd python-terminal
+   export GEMINI_API_KEY=your_key_here
    ```
 
-2. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+If no key is set, natural-language input is interpreted using built-in pattern matching instead.
 
-3. **Run the terminal**:
-   ```bash
-   python run_terminal.py
-   ```
+## Usage examples
 
-   Or run specific commands:
-   ```bash
-   python run_terminal.py "ls -la"
-   python run_terminal.py "create a file called test.txt"
-   ```
+### Standard commands
 
-## 🎯 Usage Examples
-
-### Standard Commands
 ```bash
 PyTerminal> pwd
 /home/user/projects
@@ -95,56 +78,58 @@ PyTerminal> mkdir new_project
 PyTerminal> touch README.md
 ```
 
-### AI Natural Language Commands
+### Natural-language commands
+
 ```bash
 PyTerminal> show me all files
-🤖 AI Interpreter: Interpreted as: ls -la
+Interpreted as: ls -la
 
 PyTerminal> create a folder called backup
-🤖 AI Interpreter: Interpreted 'create a folder called backup' as: mkdir backup
-Action: Create a new directory
+Interpreted as: mkdir backup
 
 PyTerminal> copy file.txt to backup folder
-🤖 AI Interpreter: Interpreted 'copy file.txt to backup folder' as: cp file.txt backup/
-Action: Copy file
+Interpreted as: cp file.txt backup/
 ```
 
-### System Monitoring
+### System monitoring
+
 ```bash
-PyTerminal> free -h          # Memory usage
-PyTerminal> df -h            # Disk usage  
-PyTerminal> ps -af           # Running processes
-PyTerminal> top              # System overview
-PyTerminal> lscpu            # CPU information
+PyTerminal> free -h     # Memory usage
+PyTerminal> df -h       # Disk usage
+PyTerminal> ps -af      # Running processes
+PyTerminal> top         # System overview
+PyTerminal> lscpu       # CPU information
 ```
 
-## 🏗️ Architecture
+## Project structure
 
 ```
 python-terminal/
 ├── src/
-│   ├── terminal_engine.py      # Core terminal processing engine
-│   ├── main.py                 # Interactive CLI interface with colors
-│   ├── ai_interpreter.py       # Natural language processing
+│   ├── terminal_engine.py      # Core command processor
+│   ├── main.py                 # Interactive CLI interface
+│   ├── ai_interpreter.py       # Natural-language interpretation
 │   ├── system_monitor.py       # System monitoring utilities
 │   └── commands/
 │       ├── file_operations.py  # File and directory commands
 │       └── system_commands.py  # Process and environment commands
-├── tests/                      # Test files
+├── tests/                      # Test suite
 ├── docs/                       # Documentation
 ├── requirements.txt            # Python dependencies
-├── run_terminal.py             # Simple launcher script
+├── run_terminal.py             # Launcher script
 ├── demo.py                     # Feature demonstration
-└── README.md                   # This file
+└── README.md
 ```
 
-### Core Components
+### Components
 
-1. **TerminalEngine**: Main command processor with built-in and external command support
-2. **FileOperations**: Comprehensive file and directory manipulation
-3. **SystemCommands**: Process management, environment variables, aliases
-4. **SystemMonitor**: Real-time system monitoring and resource usage
-5. **AICommandInterpreter**: Natural language to command translation
-6. **PyTerminalInterface**: Interactive UI with auto-completion and history
+- `TerminalEngine` — processes built-in and external commands
+- `FileOperations` — file and directory manipulation
+- `SystemCommands` — process management, environment variables, and aliases
+- `SystemMonitor` — resource usage and system information
+- `AICommandInterpreter` — translates natural language into commands
+- `PyTerminalInterface` — interactive interface with completion and history
 
+## Requirements
 
+Python 3.7 or later. Dependencies are listed in `requirements.txt`.
